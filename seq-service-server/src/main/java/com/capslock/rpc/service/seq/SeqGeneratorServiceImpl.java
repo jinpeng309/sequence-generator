@@ -11,7 +11,6 @@ import java.net.Inet4Address;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -29,23 +28,30 @@ public class SeqGeneratorServiceImpl implements SeqGeneratorService {
     private StoreService storeService;
     private ScheduledExecutorService syncRouteTableScheduler = Executors.newSingleThreadScheduledExecutor();
     private String localIp;
+    private HashMap<String, List<Long>> routeMap = null;
 
     @PostConstruct
     public void init() throws UnknownHostException {
-        final HashMap<String, List<Long>> routeMap = storeService.getRouteTable();
-        if (routeMap.containsKey("")) {
-            final Set<Long> sessionIdSet = Sets.newHashSet(routeMap.get(""));
-            final HashMap<Long, Long> sessionMaxSeqMap = storeService.getSessionMaxSeqMap(sessionIdSet);
-            sessionMaxSeqMap.forEach((sessionId, maxSeq) -> {
-                sessionMap.putIfAbsent(sessionId, new SessionImpl(sessionId, maxSeq));
-            });
-        }
         localIp = Inet4Address.getLocalHost().getHostAddress();
+        final HashMap<String, List<Long>> routeMap = storeService.getRouteTable(routeTableVersion);
+        this.routeMap = routeMap;
+        if (routeMap.containsKey(localIp)) {
+            final Set<Long> sessionIdSet = Sets.newHashSet(routeMap.get(localIp));
+            final HashMap<Long, Long> sessionMaxSeqMap = storeService.getSessionMaxSeqMap(sessionIdSet);
+            sessionMaxSeqMap.forEach((sessionId, maxSeq) ->
+                    sessionMap.putIfAbsent(sessionId, new SessionImpl(sessionId, maxSeq)));
+        }
     }
 
     @Override
     public Result generateSeq(final long userId, final long routeTableVersion) {
-        return new Result(nextSeq(userId));
+        if (routeTableVersion < this.routeTableVersion) {
+            final Result result = new Result(nextSeq(userId));
+            result.setRouteMap(routeMap);
+            return result;
+        } else {
+            return new Result(nextSeq(userId));
+        }
     }
 
     public long nextSeq(final long uid) {
@@ -54,20 +60,19 @@ public class SeqGeneratorServiceImpl implements SeqGeneratorService {
 
     @Scheduled(fixedRate = 5000)
     private void syncRouteTable() {
-        final Map<String, List<Long>> routeMap = storeService.getRouteTable();
-        if (routeMap.containsKey("")) {
+        final HashMap<String, List<Long>> routeMap = storeService.getRouteTable(routeTableVersion);
+        if (routeMap.containsKey(localIp)) {
             final long version = routeMap.get("version").get(0);
-            final Set<Long> sessionIdSet = Sets.newHashSet(routeMap.get(""));
+            final Set<Long> sessionIdSet = Sets.newHashSet(routeMap.get(localIp));
             sessionMap.keySet()
                     .stream()
                     .filter(sessionId -> !sessionIdSet.contains(sessionId))
                     .forEach(sessionMap::remove);
             syncRouteTableScheduler.schedule(() -> {
                 final HashMap<Long, Long> sessionMaxSeqMap = storeService.getSessionMaxSeqMap(sessionIdSet);
-                sessionMaxSeqMap.forEach((sessionId, maxSeq) -> {
-                    sessionMap.putIfAbsent(sessionId, new SessionImpl(sessionId, maxSeq));
-                });
+                sessionMaxSeqMap.forEach((sessionId, maxSeq) -> sessionMap.putIfAbsent(sessionId, new SessionImpl(sessionId, maxSeq)));
                 routeTableVersion = version;
+                this.routeMap = routeMap;
             }, 5, TimeUnit.SECONDS);
         }
     }

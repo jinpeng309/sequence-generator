@@ -19,7 +19,7 @@ public class StoreService {
         return new HashMap<>();
     }
 
-    public HashMap<String, List<Long>> getRouteTable() {
+    public HashMap<String, List<Long>> getRouteTable(final long clientVersion) {
         return new HashMap<>();
     }
 }

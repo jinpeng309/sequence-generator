@@ -2,6 +2,9 @@ package com.capslock.rpc.api.seq;
 
 import lombok.Data;
 
+import java.util.HashMap;
+import java.util.List;
+
 /**
  * Created by alvin.
  */
@@ -11,10 +14,6 @@ public interface SeqGeneratorService {
     @Data
     class Result {
         private final long sequence;
-        private RouteTable routeTable;
-    }
-
-    class RouteTable {
-
+        private HashMap<String, List<Long>> routeMap;
     }
 }
