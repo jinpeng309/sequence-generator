@@ -1,7 +1,5 @@
 package com.capslock.rpc.service.seq;
 
-import java.net.Inet4Address;
-import java.net.UnknownHostException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -11,7 +9,7 @@ public class SessionImpl implements Session {
     private final long sessionId;
     private long maxSeq;
     private ConcurrentHashMap<Long, Long> userCurSeqMap = new ConcurrentHashMap<>();
-    private StoreService storeService;
+    private StorageService storageService;
 
     public SessionImpl(final long sessionId, final long maxSeq) {
         this.sessionId = sessionId;
@@ -33,7 +31,7 @@ public class SessionImpl implements Session {
 
     private synchronized void ensureMaxSeqCapability(final long nextSeq) {
         if (nextSeq >= maxSeq) {
-            storeService.storeMaxSeq(sessionId, nextSeq);
+            storageService.setSessionMaxSeq(sessionId, nextSeq);
             maxSeq = nextSeq;
         }
     }

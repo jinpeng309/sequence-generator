@@ -9,11 +9,11 @@ import java.util.List;
  * Created by alvin.
  */
 public interface SeqGeneratorService {
-    Result generateSeq(final long userId, final long routeTableVersion);
+    Result generateSeq(final long userId, final long version);
 
     @Data
     class Result {
         private final long sequence;
-        private HashMap<String, List<Long>> routeMap;
+        private List<String> serviceList;
     }
 }
