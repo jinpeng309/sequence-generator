@@ -2,7 +2,6 @@ package com.capslock.rpc.api.seq;
 
 import lombok.Data;
 
-import java.util.HashMap;
 import java.util.List;
 
 /**
