@@ -29,13 +29,13 @@ public class SeqGeneratorServiceImpl implements SeqGeneratorService {
     @Autowired
     private StorageService storageService;
     private ScheduledExecutorService syncSessionMapScheduler = Executors.newSingleThreadScheduledExecutor();
-    private String localIp;
+    private String localHostAndPort;
     private long currentServiceListVersion;
     private List<String> currentServiceList = new ArrayList<>();
 
     @PostConstruct
     public void init() throws UnknownHostException, NotRegisteredException {
-        localIp = Inet4Address.getLocalHost().getHostAddress();
+        localHostAndPort = Inet4Address.getLocalHost().getHostAddress().concat(":8080");
         updateCurrentServiceList();
     }
 
@@ -55,13 +55,13 @@ public class SeqGeneratorServiceImpl implements SeqGeneratorService {
 
         for (final ServiceHealth serviceHealth : serviceHealthList) {
             final Service service = serviceHealth.getService();
-            addressList.add(service.getAddress().concat(":").concat(Integer.toString(service.getPort())));
+            addressList.add(service.getId().concat(":").concat(Integer.toString(service.getPort())));
         }
         Collections.sort(addressList);
         currentServiceList = addressList;
         final long newVersion = Hashing.md5().hashString(Joiner.on(",").join(currentServiceList), Charsets.UTF_8).asLong();
         if (newVersion != currentServiceListVersion) {
-            final int localServerIndex = currentServiceList.indexOf(localIp);
+            final int localServerIndex = currentServiceList.indexOf(localHostAndPort);
             final int size = currentServiceList.size();
             final Set<Long> sessionIdSet = new HashSet<>();
             for (long sessionId = 0; sessionId < 10000; sessionId++) {
