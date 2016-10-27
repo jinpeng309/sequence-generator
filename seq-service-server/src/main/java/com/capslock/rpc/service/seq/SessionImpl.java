@@ -1,19 +1,23 @@
 package com.capslock.rpc.service.seq;
 
+import lombok.Data;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by alvin.
  */
+@Data
 public class SessionImpl implements Session {
     private final long sessionId;
     private long maxSeq;
     private ConcurrentHashMap<Long, Long> userCurSeqMap = new ConcurrentHashMap<>();
     private StorageService storageService;
 
-    public SessionImpl(final long sessionId, final long maxSeq) {
+    public SessionImpl(final long sessionId, final long maxSeq, final StorageService storageService) {
         this.sessionId = sessionId;
         this.maxSeq = maxSeq;
+        this.storageService = storageService;
     }
 
     @Override

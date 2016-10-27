@@ -14,11 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import javax.annotation.PostConstruct;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -53,6 +49,10 @@ public class SeqGeneratorServiceImpl implements SeqGeneratorService {
             e.printStackTrace();
             return;
         }
+        if (serviceHealthList.isEmpty()) {
+            return;
+        }
+
         for (final ServiceHealth serviceHealth : serviceHealthList) {
             final Service service = serviceHealth.getService();
             addressList.add(service.getAddress().concat(":").concat(Integer.toString(service.getPort())));
@@ -85,7 +85,7 @@ public class SeqGeneratorServiceImpl implements SeqGeneratorService {
             syncSessionMapScheduler.schedule(() -> {
                 needAddSessionIdSet.forEach(sessionId -> {
                     final long maxSeq = storageService.getSessionMaxSeq(sessionId).or(0L);
-                    sessionMap.put(sessionId, new SessionImpl(sessionId, maxSeq));
+                    sessionMap.put(sessionId, new SessionImpl(sessionId, maxSeq, storageService));
                 });
             }, 5, TimeUnit.SECONDS);
             currentServiceListVersion = newVersion;
@@ -104,7 +104,11 @@ public class SeqGeneratorServiceImpl implements SeqGeneratorService {
     }
 
     public long generateNextSeq(final long uid) {
-        return sessionMap.getOrDefault(calcSessionId(uid), DummySessionImpl.getSingleton()).generateNextSeq(uid);
+        final long sessionId = calcSessionId(uid);
+        return sessionMap.computeIfAbsent(sessionId, key -> {
+            final long maxSeq = storageService.getSessionMaxSeq(sessionId).or(0L);
+            return new SessionImpl(sessionId, maxSeq, storageService);
+        }).generateNextSeq(uid);
     }
 
     private long calcSessionId(final long uid) {

@@ -70,7 +70,8 @@ public class StorageService {
 
         while (true) {
             try {
-                storageService.getHealthyServices();
+                System.out.println(storageService.getHealthyServices().size());
+                Thread.sleep(1000);
             } catch (Exception e) {
                 System.out.println("get list error");
             }
